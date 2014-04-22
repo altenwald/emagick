@@ -54,7 +54,7 @@ with(InData, From, Funs) -> with(InData, From, Funs, []).
 with(InData, From, Funs, AppEnv) ->
     WorkDir = ?WORKDIR(AppEnv),
     ok = filelib:ensure_dir(WorkDir ++ "/"),
-    Filename = uuid:uuid_to_string(uuid:get_v4()),
+    Filename = uuid:to_string(uuid:uuid4()),
     InFile = WorkDir ++ "/" ++ Filename ++ "." ++ atom_to_list(From),
     ok = file:write_file(InFile, InData),
     % Res = call_funs(Funs, {InFile, AppEnv}),
