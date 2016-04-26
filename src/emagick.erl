@@ -60,7 +60,7 @@ with(InData, From, Funs, AppEnv) ->
     % Res = call_funs(Funs, {InFile, AppEnv}),
     try lists:foldl(fun (Fun, Arg) -> Fun(Arg) end, {InFile, [{filename, Filename}, {from, From} | AppEnv]}, Funs) of
         Res -> Res
-    catch Err -> {error, Err}
+    catch _:Err -> {error, binary:part(list_to_binary(io_lib:format("~p", [Err])), {0, 50})}
     after
         file:delete(InFile)
     end.
