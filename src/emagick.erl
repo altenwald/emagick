@@ -194,17 +194,19 @@ run_with(imageinfo, Opts) ->
     PortCommand = string:join([MagickPrefix, "convert", format_opts(CmdOpts), InFile, "info:"], " "),
     PortOpts = [stream, use_stdio, exit_status, binary],
     Port = erlang:open_port({spawn, PortCommand}, PortOpts),
-
-    {ok, Data, 0} = receive_until_exit(Port, []),
-    case erlang:port_info(Port) of
-        undefined -> ok;
-        _         -> true = erlang:port_close(Port)
-    end,
-
-    [_, Fmt, Dims | _] = binary:split(Data, <<" ">>, [trim, global]),
-    [W,H] = lists:map(fun(X) -> list_to_integer(binary_to_list(X)) end, binary:split(Dims, <<"x">>)),
-    {ok, [{format, Fmt},
-          {dimensions, {W, H}}]};
+    case receive_until_exit(Port, []) of
+        {ok, Data, 0} ->     
+            case erlang:port_info(Port) of
+                undefined -> ok;
+                _         -> true = erlang:port_close(Port)
+            end,
+            [_, Fmt, Dims | _] = binary:split(Data, <<" ">>, [trim, global]),
+            [W,H] = lists:map(fun(X) -> list_to_integer(binary_to_list(X)) end, binary:split(Dims, <<"x">>)),
+            {ok, [{format, Fmt},
+                  {dimensions, {W, H}}]};
+        _ -> {error, <<"utility non-zero exit status">>}
+    end;
+                  
 run_with(convert, Opts) ->
     InFile = proplists:get_value(infile, Opts),
     To = proplists:get_value(to, Opts),
@@ -223,15 +225,17 @@ run_with(convert, Opts) ->
     PortOpts = [stream, use_stdio, exit_status, binary],
     Port = erlang:open_port({spawn, PortCommand}, PortOpts),
 
-    %% crash upon non-zero exit status
-    {ok, _Data, 0} = receive_until_exit(Port, []),
-    case erlang:port_info(Port) of
-        undefined -> ok;
-        _ ->         true = erlang:port_close(Port)
-    end,
+    case receive_until_exit(Port, []) of
+        {ok, _Data, 0} -> 
+            case erlang:port_info(Port) of
+                undefined -> ok;
+                _ ->         true = erlang:port_close(Port)
+            end,
 
-    %% return converted file(s)
-    {ok, _} = read_converted_files(Workdir, Filename, To, InFile).
+            %% return converted file(s)
+            {ok, _} = read_converted_files(Workdir, Filename, To, InFile);
+        _ -> {error, <<"utility non-zero exit status">>}
+    end.
 
 %% -----------------------------------------------------------------------------
 -spec read_converted_files(Workdir, Filename, Suffix, Except) -> {ok, Result}
